@@ -1,0 +1,52 @@
+{
+  "manifest_version": 3,
+  "name": "Sentinela Ranger by A.Solha",
+  "version": "3.0",
+  "description": "Monitora valores e termos específicos da página de venda ML",
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  },
+  "permissions": [
+    "activeTab",
+    "storage",
+    "notifications",
+    "tabs",
+    "scripting"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Sentinela Ranger",
+    "default_icon": {
+      "16": "icon16.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "alerta.wav",
+ 	"fonts/aniron.ttf",
+        "icon128.png",
+        "icon48.png",
+        "icon16.png"
+      ],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

@@ -84,14 +84,30 @@ function stopMonitoring() {
   
   // Limpa conteúdo processado
   lastProcessedContent = '';
+  
+  // Remove all highlights by class
   document.querySelectorAll('.sentinela-target').forEach(el => {
-    // Restaura o conteúdo original antes de remover
-    const parent = el.parentNode;
-    while (el.firstChild) {
-      parent.insertBefore(el.firstChild, el);
-    }
-    parent.removeChild(el);
+    el.classList.remove('sentinela-target'); // Remove the class
+    // Remove inline styles if applied directly, or rely on them being overwritten by normal CSS
+    el.style.removeProperty('background-color');
+    el.style.removeProperty('box-shadow'); // For the border effect
+    el.style.removeProperty('border-radius');
+    el.style.removeProperty('padding');
+    el.style.removeProperty('margin');
   });
+
+  // Remove previous inline text highlights
+  document.querySelectorAll('.sentinela-target-text').forEach(el => {
+    const parent = el.parentNode;
+    if (parent) {
+      // Move children of the highlight span back to the parent
+      while (el.firstChild) {
+        parent.insertBefore(el.firstChild, el);
+      }
+      parent.removeChild(el); // Remove the highlight span itself
+    }
+  });
+  
   const existingNotif = document.getElementById('sentinela-persistent-notification');
   if (existingNotif) existingNotif.remove();
 }
@@ -188,14 +204,26 @@ function highlightTargetElements() {
   if (!isMonitoring) return;
   
   try {
-    // Remove targets anteriores
+    // Remove all previous highlights by class
     document.querySelectorAll('.sentinela-target').forEach(el => {
-      // Restaura o conteúdo original antes de remover
+      el.classList.remove('sentinela-target');
+      el.style.removeProperty('background-color');
+      el.style.removeProperty('box-shadow');
+      el.style.removeProperty('border-radius');
+      el.style.removeProperty('padding');
+      el.style.removeProperty('margin');
+    });
+
+    // Remove previous inline text highlights
+    document.querySelectorAll('.sentinela-target-text').forEach(el => {
       const parent = el.parentNode;
-      while (el.firstChild) {
-        parent.insertBefore(el.firstChild, el);
+      if (parent) {
+        // Move children of the highlight span back to the parent
+        while (el.firstChild) {
+          parent.insertBefore(el.firstChild, el);
+        }
+        parent.removeChild(el); // Remove the highlight span itself
       }
-      parent.removeChild(el);
     });
     
     let foundCases = [];
@@ -217,7 +245,8 @@ function highlightTargetElements() {
       // Verifica "com pedra"
       if (text.toLowerCase().includes('com pedra')) {
         foundCases.push('com pedra');
-        createHighlight(el);
+        // Find the specific text node and highlight only that part
+        highlightTextInElement(el, 'com pedra');
       }
       
       // Verifica comparação de tamanhos - FUNCIONA EM QUALQUER ORDEM
@@ -241,7 +270,7 @@ function highlightTargetElements() {
           console.log(`Sentinela ALERTA: ${caseMessage}`);
           
           // Destaca o elemento inteiro que contém a informação
-          createHighlight(el);
+          createHighlight(el); // Apply highlight to the sublabel element
           
           // Envia notificação específica para o background script
           chrome.runtime.sendMessage({
@@ -285,42 +314,34 @@ function highlightTargetElements() {
   }
 }
 
-// Função auxiliar para obter todos os nós de texto dentro de um elemento
-function getTextNodes(element) {
-  const textNodes = [];
-  const walker = document.createTreeWalker(
-    element,
-    NodeFilter.SHOW_TEXT,
-    null,
-    false
-  );
+// Function to highlight specific text within an element
+function highlightTextInElement(element, textToHighlight) {
+  const innerHTML = element.innerHTML;
+  // Use a regex to find the text and replace it with a styled span
+  const regex = new RegExp(`(${textToHighlight})`, 'gi');
   
-  let node;
-  while (node = walker.nextNode()) {
-    textNodes.push(node);
+  if (innerHTML.toLowerCase().includes(textToHighlight.toLowerCase())) {
+    const newInnerHTML = innerHTML.replace(regex, (match) => {
+      // Removed padding, margin, border, line-height to prevent layout shifts
+      return `<span class="sentinela-target-text" style="background-color: rgba(255, 0, 0, 0.2); border-radius: 4px;">${match}</span>`;
+    });
+    element.innerHTML = newInnerHTML;
   }
-  
-  return textNodes;
 }
 
+// Function to apply highlight to an entire element without wrapping
 function createHighlight(element) {
-  const highlight = document.createElement('span');
-  highlight.className = 'sentinela-target';
-  highlight.style.cssText = `
-    display: inline-block;
-    background-color: rgba(255, 0, 0, 0.2);
-    border: 2px solid red;
-    border-radius: 4px;
-    padding: 0 2px;
-    margin: 0 1px;
-    line-height: normal;
-  `;
-  
-  // Envolve o elemento com o highlight
-  const parent = element.parentNode;
-  parent.insertBefore(highlight, element);
-  highlight.appendChild(element);
+  // Apply the class directly to the element
+  element.classList.add('sentinela-target');
+  // Apply direct styles that don't affect layout
+  element.style.backgroundColor = 'rgba(255, 0, 0, 0.2)';
+  element.style.boxShadow = 'inset 0 0 0 2px red'; // Use box-shadow for border effect
+  element.style.borderRadius = '4px';
+  // Ensure no conflicting inline styles from previous runs or other scripts
+  element.style.padding = '0';
+  element.style.margin = '0';
 }
+
 
 function showPersistentNotification(cases) {
   console.log('Sentinela: Criando notificação para casos:', cases); // Debug

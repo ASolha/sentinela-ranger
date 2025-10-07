@@ -1,3 +1,4 @@
+
 // content.js - Script que monitora a página
 let isMonitoring = true;
 let observer = null;
@@ -238,7 +239,8 @@ function highlightTargetElements() {
     });
     
     // 2. Verifica "com pedra" e comparação de tamanhos no sublabel
-    const sublabelElements = document.querySelectorAll('.sc-title-subtitle-action__sublabel');
+    const sublabelElements = document.querySelectorAll('.sc-title-subtitle-action__sublabel, .section-item-information');
+
     sublabelElements.forEach(el => {
       const text = el.textContent;
       
@@ -291,8 +293,20 @@ function highlightTargetElements() {
         createHighlight(el.parentNode); // Destaca o container pai para melhor visualização
       }
     });
+
+    // 4. Verifica "6mm Banhada Ouro Com Friso Prateado" 
+    const allTextElements = document.querySelectorAll('.sc-detail-title__text, .andes-list__item-primary, .sc-title-subtitle-action__sublabel, [class*="title"], [class*="description"]');
+    allTextElements.forEach(el => {
+      const text = el.textContent;
+      if (text.includes('6mm Banhada Ouro Com Friso Prateado') || 
+          text.includes('6mm banhada ouro com friso prateado') ||
+          text.toLowerCase().includes('6mm banhada ouro com friso prateado')) {
+        foundCases.push('6mm Banhada Ouro Com Friso Prateado');
+        highlightTextInElement(el, '6mm Banhada Ouro Com Friso Prateado');
+      }
+    });
     
-    // 4. Verifica "Ver mensagens" no botão (detecta mas NÃO destaca)
+    // 5. Verifica "Ver mensagens" no botão (detecta mas NÃO destaca)
     const messageButtons = document.querySelectorAll('.andes-button__content');
     messageButtons.forEach(el => {
       if (el.textContent.trim() === 'Ver mensagens') {
@@ -300,6 +314,8 @@ function highlightTargetElements() {
         // NÃO aplica createHighlight() para não destacar visualmente
       }
     });
+    
+
     
     // Mostra notificação persistente se encontrou algum caso
     if (foundCases.length > 0) {

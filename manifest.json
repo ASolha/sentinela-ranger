@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Sentinela Ranger by A.Solha",
-  "version": "3.2",
+  "version": "3.3",
   "description": "Monitora valores e termos específicos da página de venda ML",
   "icons": {
     "16": "icon16.png",

@@ -45,14 +45,14 @@ function startMonitoring() {
   
   // Verifica imediatamente
   checkForOrders();
-  highlightTargetElements();
+  // highlightTargetElements() foi absorvida pelo checkForOrders
   
   // Configura observer para mudanças no DOM
   observer = new MutationObserver(() => {
     // Adiciona um pequeno delay para evitar múltiplas verificações
     setTimeout(() => {
       checkForOrders();
-      highlightTargetElements();
+      // highlightTargetElements() não é mais chamada aqui
     }, 500);
   });
   
@@ -65,7 +65,7 @@ function startMonitoring() {
   // Verifica periodicamente (backup) - aumentado para 5 segundos
   checkInterval = setInterval(() => {
     checkForOrders();
-    highlightTargetElements();
+    // highlightTargetElements() não é mais chamada aqui
   }, 5000);
 }
 
@@ -104,7 +104,7 @@ function stopMonitoring() {
       while (el.firstChild) {
         parent.insertBefore(el.firstChild, el);
       }
-      parent.removeChild(el); // Remove the highlight span itself
+      parent.removeChild(el); // Remove o span de destaque
     }
   });
   
@@ -112,7 +112,7 @@ function stopMonitoring() {
   if (existingNotif) existingNotif.remove();
 }
 
-// >>> FUNÇÃO checkForOrders CORRIGIDA (AGORA FAZ O HIGHLIGHT E MOSTRA A NOTIFICAÇÃO) <<<
+// FUNÇÃO checkForOrders (Absorveu a lógica de destaque)
 function checkForOrders() {
   if (!isMonitoring) return;
   
@@ -122,67 +122,61 @@ function checkForOrders() {
   try {
     const currentContent = document.body.innerText;
     
-    if (currentContent === lastProcessedContent) {
-      // Se o conteúdo não mudou, apenas verifica se a notificação persistente deve continuar
-      // (Isso será feito pelo highlightTargetElements)
-    } else {
-        // Lógica de detecção de pedidos (Venda #, Pedido # etc.)
-        const pageText = currentContent.toLowerCase();
+    if (currentContent !== lastProcessedContent) {
+      // Lógica de detecção de pedidos (Venda #, Pedido # etc.)
+      const pageText = currentContent.toLowerCase();
+      
+      if (pageText.includes('2 unidades')) {
+        const orderPatterns = [
+          /venda\s*#\s*(\d+)/gi, /pedido\s*#\s*(\d+)/gi, /ordem\s*#\s*(\d+)/gi,
+          /venda\s*(\d{4,})/gi, /pedido\s*(\d{4,})/gi
+        ];
         
-        if (pageText.includes('2 unidades')) {
-          const orderPatterns = [
-            /venda\s*#\s*(\d+)/gi,
-            /pedido\s*#\s*(\d+)/gi,
-            /ordem\s*#\s*(\d+)/gi,
-            /venda\s*(\d{4,})/gi,
-            /pedido\s*(\d{4,})/gi
-          ];
-          
-          let foundOrders = [];
-          const fullText = document.body.innerText;
-          
-          orderPatterns.forEach(pattern => {
-            let match;
-            while ((match = pattern.exec(fullText)) !== null) {
-              const orderNumber = match[0];
-              if (!foundOrders.includes(orderNumber)) {
-                foundOrders.push(orderNumber);
-              }
+        let foundOrders = [];
+        const fullText = document.body.innerText;
+        
+        orderPatterns.forEach(pattern => {
+          let match;
+          while ((match = pattern.exec(fullText)) !== null) {
+            const orderNumber = match[0];
+            if (!foundOrders.includes(orderNumber)) {
+              foundOrders.push(orderNumber);
             }
-          });
-          
-          const selectors = [
-            '[class*="order"]', '[class*="venda"]', '[class*="pedido"]', '[id*="order"]',
-            '[id*="venda"]', '[id*="pedido"]', 'h1, h2, h3, h4, h5, h6', '.title, .header, .info'
-          ];
-          
-          selectors.forEach(selector => {
-            const elements = document.querySelectorAll(selector);
-            elements.forEach(element => {
-              const text = element.textContent;
-              orderPatterns.forEach(pattern => {
-                let match;
-                while ((match = pattern.exec(text)) !== null) {
-                  const orderNumber = match[0];
-                  if (!foundOrders.includes(orderNumber)) {
-                    foundOrders.push(orderNumber);
-                  }
-                }
-              });
-            });
-          });
-          
-          foundOrders.forEach(orderNumber => {
-            const elementHash = hashCode(currentContent + orderNumber + window.location.href);
-            chrome.runtime.sendMessage({
-              action: 'orderFound',
-              orderNumber: orderNumber,
-              elementHash: elementHash
-            });
-          });
-        }
+          }
+        });
         
-        lastProcessedContent = currentContent;
+        const selectors = [
+          '[class*="order"]', '[class*="venda"]', '[class*="pedido"]', '[id*="order"]',
+          '[id*="venda"]', '[id*="pedido"]', 'h1, h2, h3, h4, h5, h6', '.title, .header, .info'
+        ];
+        
+        selectors.forEach(selector => {
+          const elements = document.querySelectorAll(selector);
+          elements.forEach(element => {
+            const text = element.textContent;
+            orderPatterns.forEach(pattern => {
+              let match;
+              while ((match = pattern.exec(text)) !== null) {
+                const orderNumber = match[0];
+                if (!foundOrders.includes(orderNumber)) {
+                  foundOrders.push(orderNumber);
+                }
+              }
+            });
+          });
+        });
+        
+        foundOrders.forEach(orderNumber => {
+          const elementHash = hashCode(currentContent + orderNumber + window.location.href);
+          chrome.runtime.sendMessage({
+            action: 'orderFound',
+            orderNumber: orderNumber,
+            elementHash: elementHash
+          });
+        });
+      }
+      
+      lastProcessedContent = currentContent;
     }
   } catch (error) {
     console.error('Erro na verificação de pedidos:', error);
@@ -190,9 +184,9 @@ function checkForOrders() {
   // --- FIM DA LÓGICA DE DETECÇÃO DE PEDIDOS ---
 
 
-  // --- LÓGICA DE DESTAQUE E NOTIFICAÇÃO PERMANENTE (MOVIDA E AJUSTADA) ---
+  // --- LÓGICA DE DESTAQUE E NOTIFICAÇÃO PERMANENTE ---
   try {
-    // 1. Desconecta o observer para evitar loops infinitos (mantido aqui por segurança)
+    // 1. Desconecta o observer para evitar loops infinitos
     let wasObserverActive = false;
     if (observer) {
       observer.disconnect();
@@ -224,7 +218,7 @@ function checkForOrders() {
   }
 }
 
-// >>> FUNÇÃO PRINCIPAL DE DESTAQUE AGORA SE CHAMA detectAndHighlightCases <<<
+// FUNÇÃO PRINCIPAL DE DESTAQUE
 function detectAndHighlightCases() {
   let foundCases = [];
 
@@ -252,7 +246,7 @@ function detectAndHighlightCases() {
   // 1. Verifica "2 unidades" no elemento específico
   const quantityElements = document.querySelectorAll('.sc-quantity.sc-quantity__unique span');
   quantityElements.forEach(el => {
-    if (el.textContent.toLowerCase().includes('2 unidades')) {
+    if (el && el.textContent.toLowerCase().includes('2 unidades')) {
       foundCases.push('2 unidades');
       createHighlight(el);
     }
@@ -262,6 +256,7 @@ function detectAndHighlightCases() {
   const sublabelElements = document.querySelectorAll('.sc-title-subtitle-action__sublabel, .section-item-information');
 
   sublabelElements.forEach(el => {
+    if (!el) return;
     const text = el.textContent;
     
     if (text.toLowerCase().includes('com pedra')) {
@@ -298,7 +293,7 @@ function detectAndHighlightCases() {
   // 3. Verifica "1 pacote" no título
   const titleElements = document.querySelectorAll('.sc-detail-title__text');
   titleElements.forEach(el => {
-    if (el.textContent.includes('1 pacote')) {
+    if (el && el.textContent.includes('1 pacote')) {
       foundCases.push('1 pacote');
       createHighlight(el.parentNode);
     }
@@ -307,6 +302,7 @@ function detectAndHighlightCases() {
   // 4. Verifica "6mm Banhada Ouro Com Friso Prateado" 
   const allTextElements = document.querySelectorAll('.sc-detail-title__text, .andes-list__item-primary, .sc-title-subtitle-action__sublabel, [class*="title"], [class*="description"]');
   allTextElements.forEach(el => {
+    if (!el) return;
     const text = el.textContent;
     if (text.includes('6mm Banhada Ouro Com Friso Prateado') || 
         text.includes('6mm banhada ouro com friso prateado') ||
@@ -319,7 +315,7 @@ function detectAndHighlightCases() {
   // 5. Verifica "Ver mensagens" no botão (detecta mas NÃO destaca)
   const messageButtons = document.querySelectorAll('.andes-button__content');
   messageButtons.forEach(el => {
-    if (el.textContent.trim() === 'Ver mensagens') {
+    if (el && el.textContent.trim() === 'Ver mensagens') {
       foundCases.push('Ver mensagens');
     }
   });
@@ -327,8 +323,13 @@ function detectAndHighlightCases() {
   return foundCases;
 }
 
-// >>> FUNÇÃO DESTAQUE DE TEXTO SIMPLIFICADA <<<
+// FUNÇÃO DESTAQUE DE TEXTO CORRIGIDA
 function highlightTextInElement(element, textToHighlight) {
+  // >>> CORREÇÃO PARA O ERRO: Adiciona verificação de elemento válido <<<
+  if (!element || typeof element.innerHTML === 'undefined') {
+    return;
+  }
+  
   if (element.querySelector('.sentinela-target-text')) {
     return;
   }
@@ -355,7 +356,7 @@ function createHighlight(element) {
 }
 
 
-// >>> FUNÇÕES DE ARRRASTAR E NOTIFICAÇÃO (SEM ALTERAÇÃO) <<<
+// FUNÇÕES DE ARRRASTAR E NOTIFICAÇÃO (SEM ALTERAÇÃO)
 function makeElementDraggable(elementToDrag, handleElement) {
   let isDragging = false;
   let offsetX, offsetY;
